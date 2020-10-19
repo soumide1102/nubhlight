@@ -16,7 +16,7 @@ static char   bfield_type[STRLEN];
 static int    renormalize_densities;
 static double rin;
 static double rmax;
-static double beta;
+static double beta; // desired minimum ratio of gas to magnetic pressure
 #if EOS == EOS_TYPE_GAMMA || GAMMA_FALLBACK
 static double kappa_eos;
 #endif
@@ -316,6 +316,8 @@ void init_prob() {
       PsaveLocal[i][j][k][UU] /= rhomax;
     }
 
+    // Only let cells inside the torus (radius greater than rin and non-minimal 
+    // enthalpy) contribute to pressmax
     if (r > rin && lnh[i][j][k] >= 0.) {
 #if EOS == EOS_TYPE_TABLE
       EOS_SC_fill(PsaveLocal[i][j][k], extra[i][j][k]);
@@ -462,6 +464,38 @@ void init_prob() {
         bsq_max = bsq_ij;
     }
     bsq_max = mpi_max(bsq_max);
+  } else if (strcmp(bfield_type, "vertical") == 0) {
+      // We need Bz to calculate A[i][j] and then the B field P[i][j][k][Bn].
+      // Set Bz to 1 here and calculate B field. Later, use the B field to calculate
+      // magnetic-to-fluid pressure ratio and renormalize B field.
+      double Bz = 1.0;
+      ZSLOOP(0, N1, 0, N2, 0, 0) A[i][j] = 0.;
+      ZSLOOP(0, N1, 0, N2, 0, 0) {
+        coord(i, j, k, CORN, X);
+        bl_coord(X, &r, &th);
+        q = 0.5*Bz*pow(r,2.)*pow(sin(th),2.);
+        if (q > 0.)
+          A[i][j] = q;
+      }
+
+      // Differentiate to find cell-centered B, and begin normalization
+      bsq_max = 0.;
+      ZLOOP {
+        geom = get_geometry(i, j, k, CENT);
+      
+        // Flux-ct
+        P[i][j][k][B1] =
+            -(A[i][j] - A[i][j + 1] + A[i + 1][j] - A[i + 1][j + 1]) /
+            (2. * dx[2] * geom->g);
+        P[i][j][k][B2] = (A[i][j] + A[i][j + 1] - A[i + 1][j] - A[i + 1][j + 1]) /
+                         (2. * dx[1] * geom->g);
+        P[i][j][k][B3] = 0.;
+
+        bsq_ij = bsq_calc(P[i][j][k], geom);
+        if (bsq_ij > bsq_max)
+          bsq_max = bsq_ij;
+      }
+      bsq_max = mpi_max(bsq_max);
   } else if (strcmp(bfield_type, "toroidal") == 0) {
     // Magnetic field scales with rho/rhomax.
     // Loop in z is safe b/c initial data is axisymmetric

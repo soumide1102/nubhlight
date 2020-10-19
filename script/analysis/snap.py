@@ -3,9 +3,9 @@ import sys, os
 from argparse import ArgumentParser
 parser = ArgumentParser(
   description='Plot 2d slices of your simulation at a given time.')
-parser.add_argument('dumpfile',type=str,
+parser.add_argument('--dumpfile',type=str,
                     help='File name to plot')
-parser.add_argument('variable',type=str,
+parser.add_argument('--variable',type=str,
                     help='Variable to plot')
 parser.add_argument('--coords',type=str,
                     choices=['cart','mks'],default='cart',

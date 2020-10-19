@@ -23,6 +23,7 @@ GAMTABLE = '-gamtable' in sys.argv # fake table
 RELTABLE = '-reltable' in sys.argv or (not DO_GAMMA or GAMTABLE)
 INITIAL = '-initial' in sys.argv # initial data only
 NOB = '-nob' in sys.argv # or INITIAL # no B fields
+VERTICALB = "-verticalb" in sys.argv
 TOROIDALB = "-toroidalb" in sys.argv
 RENORM = '-renorm' in sys.argv
 NORENORM = '-norenorm' in sys.argv or (not RENORM)
@@ -72,6 +73,8 @@ if NOB:
     BFIELD = "none"
 elif TOROIDALB:
     BFIELD = "toroidal"
+elif VERTICALB:
+    BFIELD = "vertical"
 else:
     BFIELD = "classic"
 
@@ -196,7 +199,7 @@ else:
 # use selection instead
 Rout_rad = ENTROPY*ceil(Rmax) # not safe to use 3x
 Rout_vis = Rout
-GAMMA = 13./9.
+GAMMA = 4./3.  #13./9.
 KAPPA = 1.e-3
 L_unit = cgs['GNEWT']*cgs['MSOLAR']*MBH/(cgs['CL']**2)
 M_UNIT = RHO_unit*(L_unit**3)
