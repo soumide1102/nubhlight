@@ -135,6 +135,7 @@ void init_prob() {
 #endif // EOS_TYPE_TABLE
 
   l = lfish_calc(rmax);
+  print("l=", l)
 
   rhomax   = -INFINITY;
   umax     = -INFINITY;
