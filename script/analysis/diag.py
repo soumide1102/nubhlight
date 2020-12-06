@@ -50,7 +50,7 @@ def plot_q_of_t(qname   = 'mdot_eh',
     if diag is None:
         if path is None:
             raise ValueError("Either path or diag must be non-none.")
-        import hdf5_to_dict as io
+        import hdf5_to_dict_mod as io
         diag = io.load_diag(path)
     t = diag['t']
     q = diag[qname]
@@ -60,8 +60,10 @@ def plot_q_of_t(qname   = 'mdot_eh',
         plt.loglog(t,q)
     else:
         plt.plot(t,q)
-    plt.xlabel('t (code units)')
-    plt.ylabel(qname + ' (code units)')
+    plt.xlabel('t (ms)')
+    #plt.xlabel('t (code units)')
+    #plt.ylabel(qname + ' (code units)')
+    plt.ylabel(qname + r' ($M_\odot s^{-1}$)')
     if ymin is not None or ymax is not None:
         if ymin is None:
             ymin = np.min(q)
@@ -69,7 +71,7 @@ def plot_q_of_t(qname   = 'mdot_eh',
             ymin = np.max(q)
         plt.ylim(ymin,ymax)
     if save:
-        for postfix in ['pdf', 'png']:
+        for postfix in ['png']:
             name = '{}_{}.{}'.format(qname,
                                      'log' if log else 'lin',
                                      postfix)

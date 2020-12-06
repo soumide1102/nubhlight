@@ -97,8 +97,10 @@ def accumulate_files_parallel(fnams,
             ids |= ids_to_add
             tds.append(to_add)
     tracers = io.TracerData.concatenate(tds)
-    if len(tracers['id']) > len(set(tracers['id'])):
-        raise ValueError("Some tracers are in multiple times.")
+    #if len(tracers['id']) > len(set(tracers['id'])):
+    # SOUMI added
+    #if len(tracers.ids()) > len(set(tracers.ids())):
+    #    raise ValueError("Some tracers are in multiple times.")
     return tracers
 
 def accumulate_files(fnams,r_thresh=1000):

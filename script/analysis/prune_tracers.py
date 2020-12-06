@@ -61,6 +61,7 @@ def _get_theta(data):
     return theta
 
 def _cond_survived(data):
+    print("data.keys()=", data.keys())
     return np.ones_like(data['id'],dtype=bool)
 
 def _cond_rmin(data,rmin = 100):

@@ -11,7 +11,7 @@ parser.add_argument('--coords',type=str,
                     choices=['cart','mks'],default='cart',
                     help='Coordinate system. Cartesian or Modified Kerr-Schild')
 parser.add_argument('-s','--size',
-                    type=float,default=40,
+                    type=float,default=100,
                     help='Size of domain to plot')
 parser.add_argument('--lin',
                     dest='log',
@@ -19,10 +19,10 @@ parser.add_argument('--lin',
                     action='store_false',
                     help='Sets scale to linear. Default is log.')
 parser.add_argument('--vmin',
-                    type=float,default=-4,
+                    type=float,default=None,
                     help='Colormap lower bound')
 parser.add_argument('--vmax',
-                    type=float,default=0,
+                    type=float,default=None,
                     help='Colormap upper bound')
 parser.add_argument('-c','--cmap',
                     type=str,default='jet',
@@ -55,11 +55,9 @@ parser.add_argument('-i','--index',
                     type=int,default=None,
                     help='Index to plot in multi-d quantity')
 
-def make_snap(dfnam,vnam,coords,size,cmap,logplot,
-              savefig,label,
-              vmin,vmax,
-              index=None,
-              geom=None):
+def make_snap(dfnam,vnam,coords,size,cmap,logplot,savefig,label,vmin,vmax,
+              index=None,geom=None,A_contours=None,ls=None,lw=None,lc=None,
+              nlev=None,zorder=None):
 
   if not os.path.exists(dfnam):
     print('ERROR File ' + dfnam + ' does not exist!')
@@ -113,39 +111,42 @@ def make_snap(dfnam,vnam,coords,size,cmap,logplot,
       fig, (a0, a1) = plt.subplots(1,2,gridspec_kw={'width_ratios':[1,1]}, figsize=(13,7))
     ax = a0
     if coords == 'mks':
-      bplt.plot_X1X2(ax, geom, var, dump, cmap=cmap, vmin=vmin, vmax=vmax, 
+      bplt.plot_X1X2(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax, 
         cbar=False, label=label, ticks=None, shading='gouraud')
     elif coords == 'cart':
-      bplt.plot_xz(ax, geom, var, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+      bplt.plot_xz(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax,
         cbar=False, label=label, ticks=None, shading='gouraud')
       ax.set_xlim([-size,size]); ax.set_ylim([-size,size])
-    if args.A_contours:
-      bplt.overlay_field(ax, geom, dump, NLEV=args.nlev,
-                         linestyle=args.linestyle, linewidth=args.linewidth,
-                         linecolor=args.linecolor, zorder=args.zorder)
+    if A_contours:
+      bplt.overlay_field(ax, geom, dump, NLEV=nlev,
+                         linestyle=ls, linewidth=lw,
+                         linecolor=lc, zorder=zorder)
     ax = a1
     if coords == 'mks':
-      bplt.plot_X1X3(ax, geom, var, dump, cmap=cmap, vmin=vmin, vmax=vmax, 
+      bplt.plot_X1X3(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax, 
         cbar=True, label=label, ticks=None, shading='gouraud')
     elif coords == 'cart':
-      bplt.plot_xy(ax, geom, var, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+      bplt.plot_xy(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax,
         cbar=True, label=label, ticks=None, shading='gouraud')
       ax.set_xlim([-size,size]); ax.set_ylim([-size,size])
       
   else:
     if coords == 'mks':
       fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-      bplt.plot_X1X2(ax, geom, var, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+      bplt.plot_X1X2(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax,
         cbar=True, label=label, ticks=None, shading='gouraud')
     elif coords == 'cart':
       fig, ax = plt.subplots(1, 1, figsize=(7, 10))
-      bplt.plot_xz(ax, geom, var, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+      bplt.plot_xz(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax,
         cbar=True, label=label, ticks=None, shading='gouraud')
+      # SOUMI delete
+      #bplt.plot_xz_for_A(ax, geom, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+      #                   cbar=True, label=label, ticks=None, shading='gouraud')
       ax.set_xlim([0,size]); ax.set_ylim([-size,size])
-    if args.A_contours:
-      bplt.overlay_field(ax, geom, dump, NLEV=args.nlev,
-                         linestyle=args.linestyle, linewidth=args.linewidth,
-                         linecolor=args.linecolor, zorder=args.zorder)
+    if A_contours:
+      bplt.overlay_field(ax, geom, dump, NLEV=nlev,
+                         linestyle=ls, linewidth=lw,
+                         linecolor=lc, zorder=zorder)
 
   if savefig == False:
     plt.show()
@@ -168,7 +169,14 @@ if __name__ == "__main__":
   label = args.label
   vmin,vmax = args.vmin,args.vmax
   index = args.index
+  A_contours = args.A_contours
+  ls = args.linestyle
+  lw = args.linewidth
+  lc = args.linecolor
+  nlev = args.nlev
+  zorder = args.zorder
 
   make_snap(dfnam,vnam,coords,size,cmap,
             logplot,savefig,label,vmin,vmax,
-            index=index)
+            index=index,A_contours=A_contours,
+            ls=ls,lw=lw,lc=lc,nlev=nlev,zorder=zorder)

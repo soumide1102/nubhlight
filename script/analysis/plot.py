@@ -12,6 +12,7 @@
 
 from __future__ import print_function, division
 import numpy as np
+import units; cgs = units.get_cgs()
 import matplotlib
 #matplotlib.use('agg')
 import matplotlib.pyplot as plt
@@ -124,7 +125,7 @@ def plot_X1X3(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
       ax.set_xticklabels([]); ax.set_yticklabels([])
 
 
-def plot_xz(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
+def plot_xz(ax, geom, var, vnam, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
             label=None, ticks=None, shading='gouraud',
             l_scale = None,
             reverse_x = False,
@@ -146,6 +147,9 @@ def plot_xz(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
     z = z[:,:,0]
     var = var[:,:,0]
     rcyl = np.sqrt(x**2 + y**2)
+  #if vnam == 'TEMP':
+  #      print("Converting vnam")
+  #      var *= (var*cgs['MEV']/cgs['GK'])*(10**9)
   if reverse_x:
     rcyl *= -1.
   if reverse_z:
@@ -158,9 +162,88 @@ def plot_xz(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
     rcyl = l_scale*rcyl
     z = l_scale*z
     ehr = l_scale*ehr
+  #print("Plot rcyl from plot_xz", rcyl)
+  #print("Plot z from plot_xz", z)
   mesh = ax.pcolormesh(rcyl, z, var, cmap=cmap, vmin=vmin, vmax=vmax,
       shading=shading)
   circle1=plt.Circle((0,0),ehr,color='k'); 
+  ax.add_artist(circle1)
+  if cbar:
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    if label:
+      plt.colorbar(mesh, cax=cax, label=label, ticks=ticks)
+    else:
+      plt.colorbar(mesh, cax=cax, ticks=ticks)
+  ax.set_aspect('equal')
+  ax.set_xlabel('x/M'); ax.set_ylabel('z/M')
+  return mesh
+
+def plot_xz_for_A(ax, geom, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
+            label=None, ticks=None, shading='gouraud',
+            l_scale = None,
+            reverse_x = False,
+            reverse_z = False,
+            fix_poles = False):
+  x = geom['x']
+  y = geom['y']
+  z = geom['z']
+  if dump['hdr']['N3'] > 1. and dump['hdr']['stopx'][3] >= np.pi:
+    x = flatten_xz(x, dump['hdr'], flip=True)
+    y = flatten_xz(y, dump['hdr'], flip=True)
+    z = flatten_xz(z, dump['hdr'])
+    #var = flatten_xz(var, dump['hdr'])
+    rcyl = np.sqrt(x**2 + y**2)
+    rcyl[np.where(x<0)] *= -1
+  else:
+    x = x[:,:,0]
+    y = y[:,:,0]
+    z = z[:,:,0]
+    #var = var[:,:,0]
+    rcyl = np.sqrt(x**2 + y**2)
+  if reverse_x:
+    rcyl *= -1.
+  if reverse_z:
+    z *= -1.
+  if fix_poles:
+    rcyl[:,0] = 0.
+    rcyl[:,-1] = 0.
+  ehr = dump['hdr']['Reh']
+  if l_scale is not None:
+    rcyl = l_scale*rcyl
+    z = l_scale*z
+    ehr = l_scale*ehr
+  print("Plot rcyl from plot_xz", rcyl)
+  print("Plot z from plot_xz", z)
+  from scipy.integrate import trapz
+  NLEV=5
+  hdr = dump['hdr']
+  N1 = hdr['N1']  # Number of cells in the r-direction
+  N2 = hdr['N2']  # Number of cells in the theta-direction
+  A_phi = np.zeros([N1,N2])
+  gdet = geom['gdet']
+  B1 = dump['B1'][:,:,0]
+  B2 = dump['B2'][:,:,0]
+  for i in range(N1):
+    for j in range(N2):
+      A_phi[i,j] = (trapz(gdet[:i,j]*B2[:i,j], dx=hdr['dx'][1]) -
+                    trapz(gdet[i,:j]*B1[i,:j], dx=hdr['dx'][2]))
+  A_phi -= (A_phi[-1,N2//2] + A_phi[-1,N2//2-1])/2
+  Apm = np.fabs(A_phi).max()
+  if np.fabs(A_phi.min()) > A_phi.max():
+    A_phi *= -1.
+  levels = np.concatenate((np.linspace(-Apm,0,NLEV)[:-1],
+                           np.linspace(0,Apm,NLEV)[1:]))
+  print("rcyl=", rcyl)
+  print("z=", z)
+  print("A_phi=", A_phi)
+  #ax.contourf(rcyl, z, A_phi, levels=levels, linestyles=linestyle,
+  #             linewidths=linewidth, zorder=zorder, cmap='viridis')
+
+  mesh = ax.pcolormesh(rcyl, z, A_phi, cmap=cmap, vmin=vmin, vmax=vmax,
+      shading=shading)
+  circle1=plt.Circle((0,0),ehr,color='k');
   ax.add_artist(circle1)
   if cbar:
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -325,45 +408,99 @@ def quiver_xy(ax, geom, dump, varx, vary, C=None,
                           qk, labelpos=qkloc,
                           coordinates='figure')
 
-def overlay_field(ax, geom, dump, NLEV=20, linestyle='-', linewidth=1,
-  linecolor='k', zorder=2):
+def overlay_field_2d(ax, geom, dump, NLEV=20, linestyle='-', linewidth=1,
+                  linecolor='k', zorder=2):
+    from scipy.integrate import trapz
+    hdr = dump['hdr']
+    N1 = hdr['N1']  # Number of cells in the r-direction
+    N2 = hdr['N2']  # Number of cells in the theta-direction
+    x = geom['x'][:,:,0]
+    y = geom['y'][:,:,0]
+    z = geom['z'][:,:,0]
+    rcyl = np.sqrt(x**2 + y**2)
+    A_phi = np.zeros([N1,N2])
+    gdet = geom['gdet']
+    B1 = dump['B1'][:,:,0]
+    B2 = dump['B2'][:,:,0]
+    print("B1=",B1)
+    print("B2=",B2)
+    print("gdet",gdet)
+    for i in range(N1):
+        for j in range(N2):
+            A_phi[i,j] = (trapz(gdet[:i,j]*B2[:i,j], dx=hdr['dx'][1]) - 
+                          trapz(gdet[i,:j]*B1[i,:j], dx=hdr['dx'][2]))
+    #print("A_phi before norm=", A_phi)
+    A_phi -= (A_phi[-1,N2//2] + A_phi[-1,N2//2-1])/2
+    #print("A_phi after norm=", A_phi)
+    Apm = np.fabs(A_phi).max()
+    if np.fabs(A_phi.min()) > A_phi.max():
+        A_phi *= -1.
+    levels = np.concatenate((np.linspace(-Apm,0,NLEV)[:-1], 
+                             np.linspace(0,Apm,NLEV)[1:]))
+    print("rcyl=", rcyl)
+    print("z=", z)
+    print("A_phi=", A_phi)
+    print("A_phi.shape=", A_phi.shape)
+    #a_file = open("a_phi_w_sub_xmax100.txt", "w")
+    #rcyl_file = open("rcyl_file.txt","w")
+    #z_file = open("z_file.txt", "w")
+    #for row in A_phi:
+    #  np.savetxt(a_file, row)
+    #a_file.close()
+    #for row in rcyl:
+    #  np.savetxt(rcyl_file, row)
+    #rcyl_file.close()
+    #for row in z:
+    #  np.savetxt(z_file, row)
+    #z_file.close()
+    levels=10
+    ax.contour(rcyl, z, A_phi, levels=levels, colors=linecolor, linestyles=linestyle,
+                linewidths=linewidth, zorder=zorder)
+    #ax.contour(rcyl, z, A_phi, colors='black', zorder=zorder)
+    return
+
+def overlay_field_3d(ax, geom, dump, NLEV=20, linestyle='-', linewidth=1,
+                     linecolor='k', zorder=2):
   from scipy.integrate import trapz
   hdr = dump['hdr']
-  N1 = hdr['N1']//2; N2 = hdr['N2']
+  N1 = hdr['N1']  # Number of cells in the r-direction
+  N2 = hdr['N2']  # Number of cells in the theta-direction
   x = geom['x']
   y = geom['y']
   z = geom['z']
-  if dump['hdr']['N3'] > 1. and dump['hdr']['stopx'][3] >= np.pi:
-    x = flatten_xz(x, dump['hdr'], flip=True)
-    y = flatten_xz(y, dump['hdr'], flip=True)
-    z = flatten_xz(z, dump['hdr'])
-    rcyl = np.sqrt(x**2 + y**2)
-    rcyl[np.where(x<0)] *= -1
-  else:
-    x = x[:,:,0]
-    y = y[:,:,0]
-    z = z[:,:,0]
-    rcyl = np.sqrt(x**2 + y**2)
+  x = flatten_xz(x, hdr, True).transpose()
+  y = flatten_xz(y, hdr, True).transpose()
+  z = flatten_xz(z, hdr, True).transpose()
+  rcyl = np.sqrt(x**2 + y**2)
   A_phi = np.zeros([N2, 2*N1])
   gdet = geom['gdet'].transpose()
   B1 = dump['B1'].mean(axis=-1).transpose()
   B2 = dump['B2'].mean(axis=-1).transpose()
   for j in range(N2):
     for i in range(N1):
-      A_phi[j,N1-1-i] = (trapz(gdet[j,:i]*B2[j,:i], dx=hdr['dx'][1]) -
+      A_phi[j,N1-1-i] = (trapz(gdet[j,:i]*B2[j,:i], dx=hdr['dx'][1]) - 
                          trapz(gdet[:j, i]*B1[:j, i], dx=hdr['dx'][2]))
-      A_phi[j,i+N1] = (trapz(gdet[j,:i]*B2[j,:i], dx=hdr['dx'][1]) -
+      A_phi[j,i+N1] = (trapz(gdet[j,:i]*B2[j,:i], dx=hdr['dx'][1]) - 
                          trapz(gdet[:j, i]*B1[:j, i], dx=hdr['dx'][2]))
   A_phi -= (A_phi[N2//2-1,-1] + A_phi[N2//2,-1])/2.
   Apm = np.fabs(A_phi).max()
   if np.fabs(A_phi.min()) > A_phi.max():
     A_phi *= -1.
-  levels = np.concatenate((np.linspace(-Apm,0,NLEV)[:-1],
+  levels = np.concatenate((np.linspace(-Apm,0,NLEV)[:-1], 
                            np.linspace(0,Apm,NLEV)[1:]))
-  ax.contour(rcyl, z, A_phi, levels=levels, colors=linecolor, linestyles=linestyle,
+  ax.contour(x, z, A_phi, levels=levels, colors=linecolor, linestyles=linestyle,
              linewidths=linewidth, zorder=zorder)
+  return
 
-def plot_xy(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
+def overlay_field(ax, geom, dump, NLEV=20, linestyle='-', linewidth=1,
+  linecolor='k', zorder=2):
+  if dump['hdr']['N3'] > 1. and dump['hdr']['stopx'][3] >= np.pi:
+    return overlay_field_3d(ax, geom, dump, NLEV, linestyle, linewidth, linecolor, zorder)
+  else:
+    print("plotting 2d field")
+    return overlay_field_2d(ax, geom, dump, NLEV, linestyle, linewidth, linecolor, zorder)
+
+def plot_xy(ax, geom, var, vnam, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
   label=None, ticks=None, shading='gouraud', fix_bounds=True):
   hdr = dump['hdr']
   x = geom['x']
@@ -374,6 +511,9 @@ def plot_xy(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
       x[:,-1] = 0
       y[:,0] = 0
   var = flatten_xy(var[:,dump['hdr']['N2']//2,:], dump['hdr'])
+  #if vnam == 'TEMP':
+  #      print("Converting vnam")
+  #      var = (var*cgs['MEV']/cgs['GK'])*(10**9)
   mesh = ax.pcolormesh(x, y, var, cmap=cmap, vmin=vmin, vmax=vmax,
       shading=shading)
   circle1=plt.Circle((0,0),dump['hdr']['Reh'],color='k'); 

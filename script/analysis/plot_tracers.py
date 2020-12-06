@@ -59,7 +59,41 @@ def get_vr(tracers,geom):
     iX1 = np.where(geom['r'][:,0,0] >= r_tcr)[0][0]
     Lambda_r = geom['Lambda_h2bl_con'][iX1,0,1,1]
     vr = tracers['ucon'][:,1]*Lambda_r/tracers['ucon'][:,0]
+    #print(vr)
+    #np.savetxt('vr.txt',vr)
+    #np.savetxt('tracers_time.txt', 1e3*tracers.units['T_unit']*tracers['time'])
+    #plt.figure(figsize=(10,8))
+    
+    #t = 1e3*tracers.units['T_unit']*tracers['time']
+    #plt.plot(t,vr)
+    #print("t.shape", t.shape)
+    
+    #plt.xlabel('time (ms)')
+    #plt.ylabel(r'$v_r (c)$')
+    #plt.savefig('vr_hist.png')
+    #print("vr.shape", vr.shape)
+    #print("vr[-1]", vr[-1])
     return vr
+
+def plot_tracers_vr(tracers, geom):
+    print("tracers['time']", (tracers['time']))
+    print("tracers['mass']", (tracers['mass']))
+    vr = get_vr(tracers, geom)
+    vr_masked = vr[tracers['time'] == 30000.0]
+    mass_masked = tracers['mass'][tracers['time'] == 30000.0]
+    vr_avg_mass_wt = np.sum(vr_masked * mass_masked)/(np.sum(mass_masked))
+    M_norm = np.sum(mass_masked)
+    plt.figure(figsize=(10,8))
+    #plt.hist(vr_masked, bins=15, weights=mass_masked/M_norm, histtype='step')
+    plt.hist(vr_masked, bins=60, weights=None, histtype='step')
+    print("vr_avg_mass_wt", vr_avg_mass_wt)
+    #print(mask)
+    #plt.hist(vr_masked, 50)
+    #plt.ylabel(r'$M/M_{ej}$')
+    plt.xlabel(r'$v_r$')
+    plt.savefig('vr_hist.png')
+    
+    #mask = np.logical_and(my_time <= tracers['time'], tracers['time'] < my_time + delta)
 
 def get_gamma(tracers,geom):
     """Assuming tracers all extracted at same extraction radius,
@@ -136,9 +170,11 @@ def spacetime_bins(tracers,
                                    ttempi['time'] <= t_range[j+1])
             ttemp = ttempi.filter(maskj)
             if len(ttemp) > 0:
-                num = np.sum(ttemp['Ye']*ttemp['mass'])
+                # SOUMI commented
+                #num = np.sum(ttemp['Ye']*ttemp['mass'])
                 den = np.sum(ttemp['mass'])
-                yebars[i,j] = num/den
+                # SOUMI commented
+                #yebars[i,j] = num/den
                 mtots[i,j] = den
             else:
                 if do_nans:
@@ -152,8 +188,11 @@ def spacetime_bins(tracers,
         maskj = tracers['time'] <= t_range[j+1]
         ttemp = tracers.filter(maskj)
         mtot_v_t[j] = np.sum(ttemp['mass'])
-
+    
+    # SOUMI commented
+    yebars = None
     return theta_range,t_range,yebars,mtots,mtot_v_t
+    #return theta_range,t_range,mtots,mtot_v_t
 
 def get_mass_mdot(tracers,
                       nbins_theta=5,
@@ -278,13 +317,18 @@ def plot_minor_summary(tracers,geom,
     weights = tracers['mass']*units['M_unit']/cgs['MSOLAR']
 
     fig,axarr = plt.subplots(2,2,figsize=(12,8))
-    _,_,_,histY = axarr[0,0].hist2d(1e3*tracers.units['T_unit']*tracers['time'],
-                                    tracers['Ye'],bins=50,
-                                    weights=weights,
-                                    cmap=cmap,
-                                    norm=norm)
-    axarr[0,0].set_xlabel('time (ms)')
-    axarr[0,0].set_ylabel(r'$Y_e$')
+    # SOUMI commented
+    #_,_,_,histY = axarr[0,0].hist2d(1e3*tracers.units['T_unit']*tracers['time'],
+    #                                tracers['Ye'],bins=50,
+    #                                weights=weights,
+    #                                cmap=cmap,
+    #                                norm=norm)
+    histY = None
+    histV = None
+    histS = None
+
+    #axarr[0,0].set_xlabel('time (ms)')
+    #axarr[0,0].set_ylabel(r'$Y_e$')
 
     _,_,_,histTH = axarr[0,1].hist2d(1e3*tracers.units['T_unit']*tracers['time'],
                                      theta,bins=50,
@@ -294,25 +338,25 @@ def plot_minor_summary(tracers,geom,
     axarr[0,1].set_xlabel('time (ms)')
     axarr[0,1].set_ylabel(r'$\theta$')
 
-    _,_,_,histS = axarr[1,0].hist2d(tracers['s'],tracers['Ye'],
-                                    bins=100,range=[[10,40],[0.01,0.6]],
-                                    weights=weights,
-                                    cmap=cmap,
-                                    norm=norm)
-    axarr[1,0].set_xlabel(r'$s$ ($k_b/$b)')
-    axarr[1,0].set_ylabel(r'$Y_e$')
+    #_,_,_,histS = axarr[1,0].hist2d(tracers['s'],tracers['Ye'],
+    #                                bins=100,range=[[10,40],[0.01,0.6]],
+    #                                weights=weights,
+    #                                cmap=cmap,
+    #                                norm=norm)
+    #axarr[1,0].set_xlabel(r'$s$ ($k_b/$b)')
+    #axarr[1,0].set_ylabel(r'$Y_e$')
 
-    _,_,_,histV = axarr[1,1].hist2d(vr,tracers['Ye'],bins=50,
-                                    weights=weights,
-                                    cmap=cmap,
-                                    norm=norm)
-    axarr[1,1].set_xlabel(r'$v^r/c$')
-    axarr[1,1].set_ylabel(r'$Y_e$')
+    #_,_,_,histV = axarr[1,1].hist2d(vr,tracers['Ye'],bins=50,
+    #                                weights=weights,
+    #                                cmap=cmap,
+    #                                norm=norm)
+    #axarr[1,1].set_xlabel(r'$v^r/c$')
+    #axarr[1,1].set_ylabel(r'$Y_e$')
 
     plt.tight_layout()
 
-    cbar = fig.colorbar(histY,ax=axarr.ravel().tolist(),
-                        label=r'Traced Mass ($M_{\odot}$)')
+    #cbar = fig.colorbar(histY,ax=axarr.ravel().tolist(),
+    #                    label=r'Traced Mass ($M_{\odot}$)')
 
     if savename is not None:
         plt.savefig(savename,bbox_inches='tight')
@@ -493,16 +537,21 @@ if __name__ == "__main__":
     hdr,geom = io.load_hdr_geom(args.dumps)
 
     tracers = io.TracerData.fromfile(args.tracers)
-    tracers_nse = io.TracerData.fromfile(args.tracers_nse)
+    # SOUMI: commented
+    #tracers_nse = io.TracerData.fromfile(args.tracers_nse)
     
     tracers = tracers.filter(get_bernoulli(tracers) > 0)
-    tracers_nse = get_intersection(tracers_nse,tracers)
+    # SOUMI: commented
+    #tracers_nse = get_intersection(tracers_nse,tracers)
 
     if args.save:
-        plot_yebar_spacetime(tracers)
+        # SOUMI: commented
+        #plot_yebar_spacetime(tracers)
         plot_minor_summary(tracers,geom)
-        plot_ye_th_hist(tracers,tracers_nse)
+        # SOUMI: commented
+        #plot_ye_th_hist(tracers,tracers_nse)
         plot_mdot_mtot(tracers)
+        plot_tracers_vr(tracers,geom)
     else:
         plot_yebar_spacetime(tracers,fontsize=None,
                              savename=None,show=True)
