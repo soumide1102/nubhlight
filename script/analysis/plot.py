@@ -125,7 +125,7 @@ def plot_X1X3(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
       ax.set_xticklabels([]); ax.set_yticklabels([])
 
 
-def plot_xz(ax, geom, var, vnam, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
+def plot_xz(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
             label=None, ticks=None, shading='gouraud',
             l_scale = None,
             reverse_x = False,
@@ -453,7 +453,7 @@ def overlay_field_2d(ax, geom, dump, NLEV=20, linestyle='-', linewidth=1,
     #for row in z:
     #  np.savetxt(z_file, row)
     #z_file.close()
-    levels=10
+    #levels=10
     ax.contour(rcyl, z, A_phi, levels=levels, colors=linecolor, linestyles=linestyle,
                 linewidths=linewidth, zorder=zorder)
     #ax.contour(rcyl, z, A_phi, colors='black', zorder=zorder)

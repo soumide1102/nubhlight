@@ -56,6 +56,7 @@ def get_vr(tracers,geom):
     r_tcr = np.mean(np.sqrt(tracers['Xcart'][:,0]**2 
                         + tracers['Xcart'][:,1]**2 
                         + tracers['Xcart'][:,2]**2))
+    print("mean tracers in km=", r_tcr)
     iX1 = np.where(geom['r'][:,0,0] >= r_tcr)[0][0]
     Lambda_r = geom['Lambda_h2bl_con'][iX1,0,1,1]
     vr = tracers['ucon'][:,1]*Lambda_r/tracers['ucon'][:,0]
@@ -79,8 +80,8 @@ def plot_tracers_vr(tracers, geom):
     print("tracers['time']", (tracers['time']))
     print("tracers['mass']", (tracers['mass']))
     vr = get_vr(tracers, geom)
-    vr_masked = vr[tracers['time'] == 30000.0]
-    mass_masked = tracers['mass'][tracers['time'] == 30000.0]
+    vr_masked = vr[tracers['time'] == 60000.0]
+    mass_masked = tracers['mass'][tracers['time'] == 60000.0]
     vr_avg_mass_wt = np.sum(vr_masked * mass_masked)/(np.sum(mass_masked))
     M_norm = np.sum(mass_masked)
     plt.figure(figsize=(10,8))
@@ -489,21 +490,24 @@ def plot_mdot_mtot(tracers,
 
     lines = [None for i in range(len(theta_range)-1)]
     labels = [None for i in range(len(theta_range)-1)]
-    for i in range(len(theta_range)-1):
-        lines[i], = axarr[0].plot(T_unit*t_range_avg,mdots[i]*MDOT_unit)
-        labels[i] = r'$%04.1f^\circ \leq \theta \leq %04.1f^\circ$' \
-                    % (theta_range[i], theta_range[i+1])
-        axarr[1].plot(T_unit*t_range_avg,mtots_sum[i]*M_unit)
+    #for i in range(len(theta_range)-1):
+    #    lines[i], = axarr[0].plot(T_unit*t_range_avg,mdots[i]*MDOT_unit)
+    #    labels[i] = r'$%04.1f^\circ \leq \theta \leq %04.1f^\circ$' \
+    #                % (theta_range[i], theta_range[i+1])
+    #    axarr[1].plot(T_unit*t_range_avg,mtots_sum[i]*M_unit)
+
+    axarr[0].plot(T_unit*t_range_avg,np.sum(mdots*MDOT_unit, axis=0))
+    axarr[1].plot(T_unit*t_range_avg,np.sum(mtots_sum*M_unit, axis=0))
 
     axarr[0].set_ylabel(r'$\dot{M}_w$ ($M_\odot /$ms)')
     axarr[1].set_xlabel(r'$t$ (ms)')
     axarr[1].set_ylabel(r'$M_w$ ($M_\odot$)')
 
-    plt.legend(lines,labels,loc='lower left',
-               bbox_to_anchor=(0.125,0.25),
-               bbox_transform=plt.gcf().transFigure,
-               fancybox=True,
-               shadow=True)
+    #plt.legend(lines,labels,loc='lower left',
+    #           bbox_to_anchor=(0.125,0.25),
+    #           bbox_transform=plt.gcf().transFigure,
+    #           fancybox=True,
+    #           shadow=True)
     if savename is not None:
         plt.savefig(savename,bbox_inches='tight')
     if show:
@@ -531,6 +535,9 @@ if __name__ == "__main__":
                         dest='save',
                         action='store_true',
                         help='Save plots rather than display them')
+    parser.add_argument('--savename_mdot',
+                        type=str, 
+                        help='Name for tracers mdot plot')
 
     args = parser.parse_args()
 
@@ -550,7 +557,7 @@ if __name__ == "__main__":
         plot_minor_summary(tracers,geom)
         # SOUMI: commented
         #plot_ye_th_hist(tracers,tracers_nse)
-        plot_mdot_mtot(tracers)
+        plot_mdot_mtot(tracers, savename=args.savename_mdot)
         plot_tracers_vr(tracers,geom)
     else:
         plot_yebar_spacetime(tracers,fontsize=None,
