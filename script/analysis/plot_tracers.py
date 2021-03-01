@@ -470,7 +470,7 @@ def plot_ye_th_hist(tracers,
 
 def plot_mdot_mtot(tracers,
                    nbins_theta=5,
-                   nbins_time=100,
+                   nbins_time=1000,
                    figsize=(8,8),
                    savename='mass-mdot-v-t-th.pdf',
                    show=False):
@@ -496,7 +496,8 @@ def plot_mdot_mtot(tracers,
     #                % (theta_range[i], theta_range[i+1])
     #    axarr[1].plot(T_unit*t_range_avg,mtots_sum[i]*M_unit)
 
-    axarr[0].plot(T_unit*t_range_avg,np.sum(mdots*MDOT_unit, axis=0))
+    np.savetxt('time_mdotwind_nbinstime1000.txt', np.c_[T_unit*t_range_avg,np.sum(mdots*MDOT_unit, axis=0)*1e3])
+    axarr[0].plot(T_unit*t_range_avg,np.sum(mdots*MDOT_unit, axis=0)*1e3)
     axarr[1].plot(T_unit*t_range_avg,np.sum(mtots_sum*M_unit, axis=0))
 
     axarr[0].set_ylabel(r'$\dot{M}_w$ ($M_\odot /$ms)')

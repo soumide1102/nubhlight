@@ -56,10 +56,12 @@ def plot_q_of_t(qname   = 'mdot_eh',
     q = diag[qname]
     if op is not None:
         q = op(q)
+    np.savetxt('time_mdotacc.txt', np.c_[t,q])
     if log:
         plt.loglog(t,q)
     else:
         plt.plot(t,q)
+    #plt.axvline(x=50, color='k')
     plt.xlabel('t (ms)')
     #plt.xlabel('t (code units)')
     #plt.ylabel(qname + ' (code units)')

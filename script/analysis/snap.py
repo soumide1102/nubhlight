@@ -114,7 +114,9 @@ def make_snap(dfnam,vnam,coords,size,cmap,logplot,savefig,label,vmin,vmax,
       bplt.plot_X1X2(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax, 
         cbar=False, label=label, ticks=None, shading='gouraud')
     elif coords == 'cart':
-      bplt.plot_xz(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+      #bplt.plot_xz(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+        #cbar=False, label=label, ticks=None, shading='gouraud')
+      bplt.plot_xz(ax, geom, var, dump, cmap=cmap, vmin=vmin, vmax=vmax,
         cbar=False, label=label, ticks=None, shading='gouraud')
       ax.set_xlim([-size,size]); ax.set_ylim([-size,size])
     if A_contours:
@@ -137,7 +139,9 @@ def make_snap(dfnam,vnam,coords,size,cmap,logplot,savefig,label,vmin,vmax,
         cbar=True, label=label, ticks=None, shading='gouraud')
     elif coords == 'cart':
       fig, ax = plt.subplots(1, 1, figsize=(7, 10))
-      bplt.plot_xz(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+      #bplt.plot_xz(ax, geom, var, vnam, dump, cmap=cmap, vmin=vmin, vmax=vmax,
+      #  cbar=True, label=label, ticks=None, shading='gouraud')
+      bplt.plot_xz(ax, geom, var, dump, cmap=cmap, vmin=vmin, vmax=vmax,
         cbar=True, label=label, ticks=None, shading='gouraud')
       # SOUMI delete
       #bplt.plot_xz_for_A(ax, geom, dump, cmap=cmap, vmin=vmin, vmax=vmax,

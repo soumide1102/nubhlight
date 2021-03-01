@@ -177,6 +177,12 @@ def plot_xz(ax, geom, var, dump, cmap='jet', vmin=None, vmax=None, cbar=True,
     else:
       plt.colorbar(mesh, cax=cax, ticks=ticks)
   ax.set_aspect('equal')
+  #print("dump.keys()", dump.keys())
+  #print("dump['t']", dump['t'])
+  #print("dump['hdr']['T_unit']*1e3", dump['hdr']['T_unit']*1e3)
+  time = dump['t']*dump['hdr']['T_unit']*1e3
+  bbox_props = dict(boxstyle="square,pad=0.05", fc='w', ec='w', alpha=1.0)
+  ax.text(-45, -40, r't={:.2f} ms'.format(time), color='k', va="center", bbox=bbox_props, rotation=0, zorder=12)
   ax.set_xlabel('x/M'); ax.set_ylabel('z/M')
   return mesh
 
