@@ -16,8 +16,8 @@ static char   bfield_type[STRLEN];
 static int    renormalize_densities;
 static double rin;
 static double rmax;
-static double beta;
-#if EOS == EOS_TYPE_GAMMA || GAMMA_FALLBACK
+static double beta; // desired minimum ratio of gas to magnetic pressure
+#if EOS == EOS_TYPE_GAMMA_GASPRESS || GAMMA_FALLBACK
 static double kappa_eos;
 #endif
 #if EOS == EOS_TYPE_TABLE
@@ -44,7 +44,7 @@ void set_problem_params() {
   set_param("rmax", &rmax);
   set_param("beta", &beta);
   set_param("renorm_dens", &renormalize_densities);
-#if EOS == EOS_TYPE_GAMMA || GAMMA_FALLBACK
+#if EOS == EOS_TYPE_GAMMA_GASPRESS || GAMMA_FALLBACK
   set_param("kappa_eos", &kappa_eos);
 #endif
 #if EOS == EOS_TYPE_TABLE
@@ -221,7 +221,11 @@ void init_prob() {
       disk_cell[i][j][k] = 1;
 
       hm1 = exp(lnh[i][j][k]) - 1.;
-#if EOS == EOS_TYPE_GAMMA || GAMMA_FALLBACK
+#if EOS_TYPE_GAMMA_RADPRESS
+      fprintf(stdout, "entropy: %f\n", entropy);
+      rho = (64./3) * (pow(hm1, 3)/pow(entropy, 4)) * (pow((gam - 1.)/gam), 3);
+      u = hm1*rho/gam;
+#elif EOS_TYPE_GAMMA_GASPRESS
       rho = pow(hm1 * (gam - 1.) / (kappa_eos * gam), 1. / (gam - 1.));
       u   = kappa_eos * pow(rho, gam) / (gam - 1.);
 #elif EOS == EOS_TYPE_TABLE
@@ -316,6 +320,8 @@ void init_prob() {
       PsaveLocal[i][j][k][UU] /= rhomax;
     }
 
+    // Only let cells inside the torus (radius greater than rin and non-minimal 
+    // enthalpy) contribute to pressmax
     if (r > rin && lnh[i][j][k] >= 0.) {
 #if EOS == EOS_TYPE_TABLE
       EOS_SC_fill(PsaveLocal[i][j][k], extra[i][j][k]);
@@ -365,6 +371,13 @@ void init_prob() {
   ZLOOP {
     if (disk_cell[i][j][k]) {
       mtot += P[i][j][k][RHO] * ggeom[i][j][CENT].g * dx[1] * dx[2] * dx[3];
+      if (mpi_io_proc()) {
+        fprintf(stdout, "\tP[i][j][k][RHO] = %e\n", P[i][j][k][RHO]);
+        fprintf(stdout, "\tggeom[i][j][CENT].g = %e\n", ggeom[i][j][CENT].g);
+        fprintf(stdout, "\tdx[1] = %e\n", dx[1]);
+        fprintf(stdout, "\tdx[2] = %e\n", dx[2]);
+        fprintf(stdout, "\tdx[3] = %e\n", dx[3]);
+      }
     }
   }
   mtot = mpi_reduce(mtot);
@@ -376,7 +389,7 @@ void init_prob() {
         mtot, mtot * M_unit, mtot * M_unit / MSUN);
   }
 // debug
-#if EOS == EOS_TYPE_TABLE
+#if EOS == EOS_TYPE_TABLE || EOS_TYPE_GAMMA_RADPRESS
   if (mpi_io_proc()) {
     fprintf(stdout, "Calculating max entropy:\n");
   }
@@ -462,6 +475,38 @@ void init_prob() {
         bsq_max = bsq_ij;
     }
     bsq_max = mpi_max(bsq_max);
+  } else if (strcmp(bfield_type, "vertical") == 0) {
+      // We need Bz to calculate A[i][j] and then the B field P[i][j][k][Bn].
+      // Set Bz to 1 here and calculate B field. Later, use the B field to calculate
+      // magnetic-to-fluid pressure ratio and renormalize B field.
+      double Bz = 1.0;
+      ZSLOOP(0, N1, 0, N2, 0, 0) A[i][j] = 0.;
+      ZSLOOP(0, N1, 0, N2, 0, 0) {
+        coord(i, j, k, CORN, X);
+        bl_coord(X, &r, &th);
+        q = 0.5*Bz*pow(r,2.)*pow(sin(th),2.);
+        if (q > 0.)
+          A[i][j] = q;
+      }
+
+      // Differentiate to find cell-centered B, and begin normalization
+      bsq_max = 0.;
+      ZLOOP {
+        geom = get_geometry(i, j, k, CENT);
+      
+        // Flux-ct
+        P[i][j][k][B1] =
+            -(A[i][j] - A[i][j + 1] + A[i + 1][j] - A[i + 1][j + 1]) /
+            (2. * dx[2] * geom->g);
+        P[i][j][k][B2] = (A[i][j] + A[i][j + 1] - A[i + 1][j] - A[i + 1][j + 1]) /
+                         (2. * dx[1] * geom->g);
+        P[i][j][k][B3] = 0.;
+
+        bsq_ij = bsq_calc(P[i][j][k], geom);
+        if (bsq_ij > bsq_max)
+          bsq_max = bsq_ij;
+      }
+      bsq_max = mpi_max(bsq_max);
   } else if (strcmp(bfield_type, "toroidal") == 0) {
     // Magnetic field scales with rho/rhomax.
     // Loop in z is safe b/c initial data is axisymmetric
